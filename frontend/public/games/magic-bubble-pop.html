@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Magic Bubble Pop</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Fredoka', sans-serif;
+            overflow: hidden;
+            background: linear-gradient(180deg, #E0F7FA 0%, #E1F5FE 100%);
+            touch-action: none; /* 禁止默认触摸行为 */
+        }
+
+        #game-area {
+            position: absolute;
+            inset: 0;
+            overflow: hidden;
+            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="black" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>') 12 12, crosshair;
+        }
+
+        .bubble {
+            position: absolute;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: inset -10px -10px 20px rgba(0,0,0,0.1), 0 10px 20px rgba(0,0,0,0.1);
+            transition: transform 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            backdrop-filter: blur(2px);
+            will-change: transform, opacity;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .bubble::after {
+            content: '';
+            position: absolute;
+            top: 15%;
+            left: 15%;
+            width: 25%;
+            height: 15%;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.6);
+            transform: rotate(-45deg);
+        }
+
+        .bubble:active {
+            transform: scale(0.9);
+        }
+
+        @keyframes pop {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.4); opacity: 0.8; }
+            100% { transform: scale(0); opacity: 0; }
+        }
+
+        .popping {
+            animation: pop 0.3s ease-out forwards;
+            pointer-events: none;
+        }
+
+        .score-float {
+            position: absolute;
+            color: #FF4081;
+            font-weight: bold;
+            font-size: 1.5rem;
+            pointer-events: none;
+            animation: floatUp 0.8s ease-out forwards;
+            text-shadow: 2px 2px 0px rgba(255,255,255,1);
+        }
+
+        @keyframes floatUp {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-50px) scale(1.2); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-area" class="w-full h-full relative">
+        <!-- UI Overlay -->
+        <div class="absolute top-0 left-0 w-full p-6 flex justify-between items-start pointer-events-none z-50">
+            <div class="bg-white/80 backdrop-blur-md rounded-2xl p-4 shadow-xl border border-white/50 pointer-events-auto transform transition hover:scale-105">
+                <div class="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">Score</div>
+                <div id="score" class="text-4xl font-bold text-slate-800 tabular-nums leading-none">0</div>
+            </div>
+            
+            <button id="reset-btn" class="bg-white/80 backdrop-blur-md p-3 rounded-full shadow-lg border border-white/50 pointer-events-auto text-slate-600 hover:text-primary hover:bg-white transition active:scale-95" aria-label="Reset">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 12"/></svg>
+            </button>
+        </div>
+
+        <!-- Start Overlay -->
+        <div id="start-screen" class="absolute inset-0 flex flex-col items-center justify-center bg-white/60 backdrop-blur-sm z-40 transition-opacity duration-500">
+            <h1 class="text-5xl md:text-7xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-violet-500 mb-6 drop-shadow-sm text-center">
+                Magic<br>Bubble Pop
+            </h1>
+            <p class="text-slate-600 mb-8 text-lg font-medium">Click bubbles to pop them!</p>
+            <button id="start-btn" class="px-8 py-4 bg-gradient-to-r from-pink-500 to-violet-600 text-white rounded-full text-xl font-bold shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all animate-bounce">
+                Start Popping!
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const gameArea = document.getElementById('game-area');
+        const scoreDisplay = document.getElementById('score');
+        const startScreen = document.getElementById('start-screen');
+        const startBtn = document.getElementById('start-btn');
+        const resetBtn = document.getElementById('reset-btn');
+
+        let score = 0;
+        let isPlaying = false;
+        let bubbleInterval;
+
+        // Sound System
+        const synth = new Tone.PolySynth(Tone.Synth, {
+            oscillator: { type: "sine" },
+            envelope: { attack: 0.01, decay: 0.1, sustain: 0.1, release: 0.5 }
+        }).toDestination();
+        
+        const scale = ["C4", "D4", "E4", "G4", "A4", "C5", "D5", "E5"];
+        
+        function playPop() {
+            if (Tone.context.state !== 'running') Tone.start();
+            const note = scale[Math.floor(Math.random() * scale.length)];
+            synth.triggerAttackRelease(note, "8n");
+        }
+
+        function createBubble(x, y) {
+            const bubble = document.createElement('div');
+            const size = Math.random() * 60 + 60; // 60-120px
+            const hue = Math.random() * 360;
+            
+            bubble.className = 'bubble';
+            bubble.style.width = `${size}px`;
+            bubble.style.height = `${size}px`;
+            // 优雅的渐变色
+            bubble.style.background = `radial-gradient(circle at 30% 30%, hsla(${hue}, 80%, 90%, 0.8), hsla(${hue}, 90%, 60%, 0.6))`;
+            bubble.style.border = `2px solid hsla(${hue}, 80%, 60%, 0.3)`;
+            
+            // Initial position (if not specified)
+            if (!x) x = Math.random() * (window.innerWidth - size);
+            if (!y) y = Math.random() * (window.innerHeight - size);
+            
+            bubble.style.left = `${x}px`;
+            bubble.style.top = `${y}px`;
+
+            // Interaction
+            const pop = (e) => {
+                if(bubble.classList.contains('popping')) return;
+                
+                // Prevent default to stop scrolling/zooming
+                e.preventDefault();
+                e.stopPropagation();
+
+                playPop();
+                score += 10;
+                scoreDisplay.textContent = score;
+                
+                // Visual effects
+                bubble.classList.add('popping');
+                showFloatingScore(e.clientX || e.touches[0].clientX, e.clientY || e.touches[0].clientY);
+                createParticles(e.clientX || e.touches[0].clientX, e.clientY || e.touches[0].clientY, hue);
+
+                setTimeout(() => bubble.remove(), 300);
+                
+                // Spawn new one immediately for endless fun
+                if(isPlaying) setTimeout(() => createBubble(), Math.random() * 500);
+            };
+
+            bubble.addEventListener('mousedown', pop);
+            bubble.addEventListener('touchstart', pop, { passive: false });
+
+            // Floating animation
+            let dx = (Math.random() - 0.5) * 1.5;
+            let dy = (Math.random() - 0.5) * 1.5;
+            
+            function animate() {
+                if(!bubble.isConnected || bubble.classList.contains('popping')) return;
+                
+                let rect = bubble.getBoundingClientRect();
+                let newX = rect.left + dx;
+                let newY = rect.top + dy;
+
+                // Bounce off walls
+                if(newX <= 0 || newX >= window.innerWidth - size) dx *= -1;
+                if(newY <= 0 || newY >= window.innerHeight - size) dy *= -1;
+
+                bubble.style.left = `${newX}px`;
+                bubble.style.top = `${newY}px`;
+                requestAnimationFrame(animate);
+            }
+            requestAnimationFrame(animate);
+
+            gameArea.appendChild(bubble);
+        }
+
+        function showFloatingScore(x, y) {
+            const el = document.createElement('div');
+            el.className = 'score-float';
+            el.textContent = '+10';
+            el.style.left = `${x}px`;
+            el.style.top = `${y}px`;
+            gameArea.appendChild(el);
+            setTimeout(() => el.remove(), 800);
+        }
+
+        function createParticles(x, y, hue) {
+            for(let i=0; i<8; i++) {
+                const p = document.createElement('div');
+                p.style.position = 'absolute';
+                p.style.left = `${x}px`;
+                p.style.top = `${y}px`;
+                p.style.width = '6px';
+                p.style.height = '6px';
+                p.style.borderRadius = '50%';
+                p.style.background = `hsl(${hue}, 80%, 60%)`;
+                p.style.pointerEvents = 'none';
+                
+                const angle = Math.random() * Math.PI * 2;
+                const velocity = Math.random() * 5 + 2;
+                
+                p.animate([
+                    { transform: 'translate(0,0) scale(1)', opacity: 1 },
+                    { transform: `translate(${Math.cos(angle)*100}px, ${Math.sin(angle)*100}px) scale(0)`, opacity: 0 }
+                ], {
+                    duration: 600,
+                    easing: 'cubic-bezier(0, .9, .57, 1)'
+                }).onfinish = () => p.remove();
+                
+                gameArea.appendChild(p);
+            }
+        }
+
+        function startGame() {
+            isPlaying = true;
+            score = 0;
+            scoreDisplay.textContent = '0';
+            startScreen.style.opacity = '0';
+            setTimeout(() => startScreen.style.display = 'none', 500);
+            
+            // Initial batch
+            for(let i=0; i<8; i++) createBubble();
+            
+            // Auto spawn
+            if(bubbleInterval) clearInterval(bubbleInterval);
+            bubbleInterval = setInterval(() => {
+                if(document.querySelectorAll('.bubble').length < 15) {
+                    createBubble();
+                }
+            }, 2000);
+        }
+
+        startBtn.addEventListener('click', () => {
+            Tone.start();
+            startGame();
+        });
+
+        resetBtn.addEventListener('click', () => {
+            document.querySelectorAll('.bubble').forEach(b => b.remove());
+            startGame();
+        });
+
+        // Background interaction (create bubble on empty click)
+        gameArea.addEventListener('click', (e) => {
+            if(e.target === gameArea && isPlaying) {
+                createBubble(e.clientX - 40, e.clientY - 40);
+            }
+        });
+    </script>
+</body>
+</html>

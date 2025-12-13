@@ -1,0 +1,36 @@
+.DS_Store
+.vscode/
+.idea/
+.go*
+
+# ========================
+# Frontend (Next.js)
+# ========================
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/dist/
+frontend/.env*
+frontend/*.tsbuildinfo
+
+# ========================
+# Mobile (Expo / React Native)
+# ========================
+mobile/node_modules/
+mobile/.expo/
+mobile/.expo-shared/
+mobile/.env*
+mobile/*.tsbuildinfo
+mobile/ios/
+mobile/android/
+# Metro cache / watchman / expo cache
+mobile/.metro/
+mobile/.watchmanconfig
+mobile/.cache/
+
+# ========================
+# Backend (Go)
+# ========================
+backend/uploads/
+backend/*.log
+backend/.env*

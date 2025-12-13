@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reaction Time Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .game-container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 700px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .instructions {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+
+        .reaction-box {
+            width: 100%;
+            height: 300px;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 30px;
+            user-select: none;
+        }
+
+        .reaction-box.waiting {
+            background: #cbd5e0;
+        }
+
+        .reaction-box.ready {
+            background: #fc8181;
+        }
+
+        .reaction-box.go {
+            background: #48bb78;
+        }
+
+        .reaction-text {
+            font-size: 2rem;
+            font-weight: bold;
+            color: white;
+            text-align: center;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: block;
+            margin: 0 auto 20px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .result-area {
+            text-align: center;
+            font-size: 1.5rem;
+            color: #333;
+            min-height: 40px;
+            margin-bottom: 15px;
+        }
+
+        .result-area .time {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .best-score {
+            text-align: center;
+            color: #666;
+            font-size: 1.1rem;
+        }
+
+        .best-score .best-time {
+            color: #48bb78;
+            font-weight: bold;
+        }
+
+        @media (max-width: 600px) {
+            .game-container {
+                padding: 20px;
+            }
+            h1 {
+                font-size: 2rem;
+            }
+            .reaction-box {
+                height: 200px;
+            }
+            .reaction-text {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>⚡ Reaction Time Test</h1>
+
+        <div class="instructions">
+            <p>Wait for the box to turn <strong>green</strong>, then click as fast as you can! ⚡</p>
+        </div>
+
+        <div id="reactionBox" class="reaction-box waiting">
+            <div id="reactionText" class="reaction-text">Click "Start" to begin</div>
+        </div>
+
+        <button id="startBtn" class="btn">Start Test</button>
+
+        <div id="result" class="result-area"></div>
+        <div id="bestScore" class="best-score"></div>
+    </div>
+
+    <script>
+        const box = document.getElementById('reactionBox');
+        const text = document.getElementById('reactionText');
+        const startBtn = document.getElementById('startBtn');
+        const result = document.getElementById('result');
+        const bestScoreEl = document.getElementById('bestScore');
+
+        let startTime = 0;
+        let timeout = null;
+        let canClick = false;
+        let bestTime = localStorage.getItem('reaction-best') || null;
+
+        function displayBest() {
+            if (bestTime) {
+                bestScoreEl.innerHTML = `Your best time: <span class="best-time">${bestTime}ms</span>`;
+            }
+        }
+
+        displayBest();
+
+        startBtn.addEventListener('click', startTest);
+
+        function startTest() {
+            if (canClick) return;
+
+            startBtn.disabled = true;
+            result.textContent = '';
+            box.className = 'reaction-box ready';
+            text.textContent = 'Wait for green...';
+
+            const randomDelay = 2000 + Math.random() * 3000; // 2-5 seconds
+
+            timeout = setTimeout(() => {
+                box.className = 'reaction-box go';
+                text.textContent = 'CLICK NOW!';
+                startTime = Date.now();
+                canClick = true;
+            }, randomDelay);
+        }
+
+        box.addEventListener('click', () => {
+            if (!canClick && box.classList.contains('ready')) {
+                // Clicked too early
+                clearTimeout(timeout);
+                box.className = 'reaction-box waiting';
+                text.textContent = 'Too early! Click "Start" to try again';
+                startBtn.disabled = false;
+                result.innerHTML = '<span style="color: #f56565;">Too early! Wait for green.</span>';
+                return;
+            }
+
+            if (canClick) {
+                const reactionTime = Date.now() - startTime;
+                canClick = false;
+                startBtn.disabled = false;
+
+                box.className = 'reaction-box waiting';
+                text.textContent = 'Click "Start" to test again';
+
+                result.innerHTML = `Your time: <span class="time">${reactionTime}ms</span>`;
+
+                // Update best score
+                if (!bestTime || reactionTime < bestTime) {
+                    bestTime = reactionTime;
+                    localStorage.setItem('reaction-best', bestTime);
+                    displayBest();
+                    result.innerHTML += '<br><span style="color: #48bb78;">🎉 New best!</span>';
+                }
+            }
+        });
+    </script>
+</body>
+</html>

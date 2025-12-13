@@ -1,0 +1,15 @@
+# Dependencies
+node_modules
+
+# Build output
+.next
+out
+
+# Development files
+.git
+.gitignore
+README.md
+
+# Misc
+npm-debug.log*
+
