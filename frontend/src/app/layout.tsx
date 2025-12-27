@@ -1,7 +1,8 @@
 import './globals.css';
 import { Geist, Geist_Mono } from 'next/font/google';
-import { Gamepad2, Trophy, Heart } from 'lucide-react';
+import { Gamepad2, Trophy, Heart, Github } from 'lucide-react';
 import Link from 'next/link';
+import Analytics from '@/components/analytics';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',
@@ -58,11 +59,14 @@ export default function RootLayout({
                   Play Random
                </button>
             </div>
+            <Link href="https://github.com/axpz/axludi" className="hover:text-primary transition-colors flex items-center gap-1.5">
+              <Github size={16} /> GitHub
+            </Link>
           </div>
         </header>
 
         {/* Main Content */}
-        <main className="flex-1 stretch mx-auto px-4 py-8">
+        <main className="flex-1 w-full px-4 py-8">
           {children}
         </main>
 
@@ -79,6 +83,7 @@ export default function RootLayout({
             </div>
           </div>
         </footer>
+        <Analytics />
       </body>
     </html>
   );

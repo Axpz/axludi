@@ -1,0 +1,1329 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>小小勇士·高空探险 🌈</title>
+    <!-- 引入 Three.js 库 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- 引入 Tailwind CSS (用于 UI 样式) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* 确保 Canvas 占据整个视口 */
+        body { 
+            margin: 0; 
+            overflow: hidden; 
+            background: linear-gradient(180deg, #FFE5B4 0%, #87CEEB 100%);
+            font-family: 'Comic Sans MS', 'Inter', sans-serif;
+            touch-action: none;
+        }
+        #game-canvas { display: block; width: 100%; height: 100%; }
+        
+        /* UI 容器样式 */
+        .ui-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        /* 游戏按钮通用样式 - 增强色彩 */
+        .game-button {
+            padding: 1rem 2.5rem;
+            margin: 0.5rem;
+            border-radius: 9999px;
+            font-size: 1.25rem;
+            font-weight: 900;
+            color: white;
+            transition: all 0.3s ease-in-out;
+            box-shadow: 0 8px 0 rgba(0, 0, 0, 0.2), 0 4px 15px rgba(0, 0, 0, 0.15);
+            pointer-events: auto;
+            cursor: pointer;
+            border: 4px solid rgba(255, 255, 255, 0.8);
+            background: linear-gradient(145deg, var(--btn-color-1), var(--btn-color-2));
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        .game-button::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.3), transparent);
+            transform: rotate(45deg);
+            animation: shine 3s infinite;
+        }
+        @keyframes shine {
+            0%, 100% { transform: translateX(-100%) rotate(45deg); }
+            50% { transform: translateX(100%) rotate(45deg); }
+        }
+        .game-button:hover {
+            transform: translateY(-4px) scale(1.05);
+            box-shadow: 0 12px 0 rgba(0, 0, 0, 0.2), 0 8px 25px rgba(0, 0, 0, 0.2);
+        }
+        .game-button:active {
+            transform: translateY(4px) scale(0.98);
+            box-shadow: 0 4px 0 rgba(0, 0, 0, 0.2), 0 2px 10px rgba(0, 0, 0, 0.15);
+        }
+        
+        /* 移动端按钮调整 */
+        @media (max-width: 768px) {
+            .game-button {
+                padding: 0.75rem 1.5rem;
+                font-size: 1rem;
+                margin: 0.25rem;
+            }
+            h1 { font-size: 2rem !important; }
+            h2 { font-size: 1rem !important; }
+        }
+        
+        /* 游戏失败/提示框 - 更活泼 */
+        #message-box {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.8);
+            padding: 1.5rem 2.5rem;
+            background: linear-gradient(135deg, #FFF5E1, #FFE5B4);
+            border-radius: 2rem;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: #FF6B35;
+            text-align: center;
+            z-index: 100;
+            opacity: 0;
+            transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            pointer-events: none;
+            border: 4px solid #FF6B35;
+        }
+        #message-box.show {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+            pointer-events: auto;
+        }
+        
+        /* 角色表情显示 */
+        #player-mood {
+            font-size: 4rem;
+            line-height: 1;
+            transition: transform 0.2s;
+            filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.3));
+            animation: bounce 2s infinite;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        
+        /* 移动端虚拟控制器 */
+        .mobile-controls {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            display: grid;
+            grid-template-columns: repeat(3, 70px);
+            grid-template-rows: repeat(2, 70px);
+            gap: 10px;
+            pointer-events: auto;
+            z-index: 50;
+        }
+        .control-btn {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #FFD700, #FFA500);
+            border: 4px solid white;
+            box-shadow: 0 6px 0 rgba(0, 0, 0, 0.2), 0 4px 15px rgba(0, 0, 0, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: white;
+            cursor: pointer;
+            touch-action: none;
+            user-select: none;
+            transition: all 0.1s;
+        }
+        .control-btn:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 rgba(0, 0, 0, 0.2), 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
+        .control-btn.up { grid-column: 2; grid-row: 1; }
+        .control-btn.left { grid-column: 1; grid-row: 2; }
+        .control-btn.right { grid-column: 3; grid-row: 2; }
+        
+        /* 进度条 */
+        .progress-bar {
+            width: 200px;
+            height: 30px;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 15px;
+            border: 3px solid #FF6B35;
+            overflow: hidden;
+            position: relative;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #FFD700, #FF6B35);
+            transition: width 0.3s ease;
+            box-shadow: inset 0 2px 4px rgba(255,255,255,0.5);
+        }
+        
+        /* 星星闪烁动画 */
+        @keyframes sparkle {
+            0%, 100% { transform: scale(1) rotate(0deg); opacity: 1; }
+            50% { transform: scale(1.2) rotate(180deg); opacity: 0.8; }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="game-canvas"></canvas>
+
+    <!-- 加载提示 -->
+    <div id="loading" class="ui-overlay" style="background: linear-gradient(135deg, rgba(255,182,193,0.95), rgba(135,206,250,0.95));">
+        <h2 class="text-3xl md:text-4xl font-extrabold" style="color: #FF6B35; text-shadow: 3px 3px 0 #FFD700;">
+            🎮 加载中...
+        </h2>
+        <p class="text-xl mt-4" style="color: #4169E1;">请稍候</p>
+    </div>
+
+    <!-- 主菜单 UI -->
+    <div id="menu" class="ui-overlay hidden" style="background: linear-gradient(135deg, rgba(255,182,193,0.9), rgba(135,206,250,0.9));">
+        <h1 class="text-5xl md:text-6xl font-extrabold mb-4 p-4 rounded-xl" style="color: #FF6B35; text-shadow: 4px 4px 0 #FFD700, 6px 6px 10px rgba(0,0,0,0.3);">
+            🌈 高空探险
+        </h1>
+        <p class="text-lg md:text-xl font-bold mb-10" style="color: #4169E1; text-shadow: 2px 2px 4px rgba(255,255,255,0.8);">
+            收集星星⭐ 寻找宝箱🎁
+        </p>
+
+        <button class="game-button" style="--btn-color-1: #90EE90; --btn-color-2: #32CD32;" onclick="console.log('按钮1点击'); startGame(1);">
+            🌱 草地冒险
+        </button>
+        <button class="game-button" style="--btn-color-1: #87CEEB; --btn-color-2: #4682B4;" onclick="console.log('按钮2点击'); startGame(2);">
+            🌉 彩虹桥
+        </button>
+        <button class="game-button" style="--btn-color-1: #DDA0DD; --btn-color-2: #BA55D3;" onclick="console.log('按钮3点击'); startGame(3);">
+            ☁️ 云端城堡
+        </button>
+    </div>
+
+    <!-- 游戏内 UI -->
+    <div id="game-ui" class="ui-overlay pointer-events-none hidden p-2 md:p-6">
+        <!-- 左上角: 勇气值/星星 -->
+        <div class="absolute top-0 left-0 m-2 md:m-6 p-2 md:p-4 rounded-xl md:rounded-2xl shadow-xl pointer-events-auto flex items-center" 
+             style="background: linear-gradient(135deg, rgba(255,215,0,0.95), rgba(255,165,0,0.95)); border: 3px solid #FF6B35;">
+            <span class="text-2xl md:text-3xl mr-2 animate-pulse">⭐</span>
+            <span class="text-lg md:text-2xl font-black" style="color: #8B4513; text-shadow: 1px 1px 2px rgba(255,255,255,0.8);">
+                <span id="courage-value">0</span> / 5
+            </span>
+        </div>
+        
+        <!-- 右上角: 宝箱收集数 -->
+        <div class="absolute top-0 right-0 m-2 md:m-6 p-2 md:p-4 rounded-xl md:rounded-2xl shadow-xl pointer-events-auto flex items-center" 
+             style="background: linear-gradient(135deg, rgba(255,182,193,0.95), rgba(255,105,180,0.95)); border: 3px solid #FF1493;">
+            <span class="text-2xl md:text-3xl mr-2">🎁</span>
+            <span class="text-lg md:text-2xl font-black" style="color: #8B0000; text-shadow: 1px 1px 2px rgba(255,255,255,0.8);">
+                <span id="treasure-value">0</span>
+            </span>
+        </div>
+
+        <!-- 角色心情/表情 -->
+        <div class="absolute top-1/4 left-1/2 transform -translate-x-1/2 pointer-events-none">
+            <div id="player-mood">🙂</div>
+        </div>
+        
+        <!-- 关卡进度条 -->
+        <div class="absolute top-16 md:top-24 left-1/2 transform -translate-x-1/2 pointer-events-auto">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill" style="width: 0%;"></div>
+            </div>
+            <p class="text-center text-sm md:text-base font-bold mt-1" style="color: #FF6B35; text-shadow: 1px 1px 2px rgba(255,255,255,0.8);">
+                前进距离: <span id="distance-value">0</span>m
+            </p>
+        </div>
+
+        <!-- 暂停/返回按钮 -->
+        <button class="game-button text-base md:text-xl py-2 px-4 md:py-3 md:px-6 absolute top-2 right-2 md:top-6 md:right-6" 
+                style="--btn-color-1: #708090; --btn-color-2: #2F4F4F;" onclick="pauseGame()">
+            ⏸️
+        </button>
+        
+        <!-- 移动端虚拟控制器 -->
+        <div id="mobile-controls" class="mobile-controls hidden">
+            <button class="control-btn up" ontouchstart="handleTouch('up', true)" ontouchend="handleTouch('up', false)">⬆️</button>
+            <button class="control-btn left" ontouchstart="handleTouch('left', true)" ontouchend="handleTouch('left', false)">⬅️</button>
+            <button class="control-btn right" ontouchstart="handleTouch('right', true)" ontouchend="handleTouch('right', false)">➡️</button>
+        </div>
+    </div>
+
+    <!-- 失败/提示消息框 -->
+    <div id="message-box"></div>
+    
+    <!-- 暂停菜单 -->
+    <div id="pause-menu" class="ui-overlay hidden" style="background: rgba(0, 0, 0, 0.85);">
+        <div class="p-6 md:p-8 rounded-2xl max-w-md" style="background: linear-gradient(135deg, #FFE5B4, #FFF5E1); border: 4px solid #FF6B35;">
+            <h2 class="text-3xl md:text-4xl font-extrabold mb-6" style="color: #FF6B35;">⏸️ 暂停</h2>
+            <button class="game-button" style="--btn-color-1: #32CD32; --btn-color-2: #228B22;" onclick="resumeGame()">
+                ▶️ 继续
+            </button>
+            <button class="game-button" style="--btn-color-1: #FF6347; --btn-color-2: #DC143C;" onclick="restartGame()">
+                🔄 重玩
+            </button>
+            <button class="game-button" style="--btn-color-1: #A9A9A9; --btn-color-2: #696969;" onclick="showMenu()">
+                🏠 主菜单
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let scene, camera, renderer;
+        let player, mixer;
+        const keyState = {};
+        let isGameRunning = false;
+        let isPaused = false;
+        let currentScene = 1;
+        let courageValue = 0;
+        let treasureValue = 0;
+        let distanceValue = 0;
+        const playerSpeed = 0.08;
+        let clouds = [];
+        let treasures = [];
+        let particles = [];
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+        // UI 元素
+        const loadingEl = document.getElementById('loading');
+        const menuEl = document.getElementById('menu');
+        const gameUIEl = document.getElementById('game-ui');
+        const pauseMenuEl = document.getElementById('pause-menu');
+        const courageValueEl = document.getElementById('courage-value');
+        const treasureValueEl = document.getElementById('treasure-value');
+        const distanceValueEl = document.getElementById('distance-value');
+        const progressFillEl = document.getElementById('progress-fill');
+        const mobileControlsEl = document.getElementById('mobile-controls');
+        const messageBoxEl = document.getElementById('message-box');
+        const playerMoodEl = document.getElementById('player-mood');
+
+        // 角色表情映射
+        const moods = {
+            'calm': '🙂',
+            'nervous': '😰',
+            'walking': '😊',
+            'success': '🤩',
+            'surprised': '😲'
+        };
+        
+        // 简单音效反馈（使用Web Audio API）
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(frequency = 440, duration = 0.1, type = 'sine') {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            oscillator.frequency.value = frequency;
+            oscillator.type = type;
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + duration);
+        }
+
+        // --- 核心 Three.js 初始化 ---
+
+        function init() {
+            // 场景
+            scene = new THREE.Scene();
+            scene.fog = new THREE.Fog(0x87CEEB, 20, 60);
+
+            // 渲染器
+            const canvas = document.getElementById('game-canvas');
+            renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setClearColor(0x87CEEB);
+
+            // 相机
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            
+            // 灯光 - 更明亮
+            const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(10, 20, 10);
+            directionalLight.castShadow = false;
+            scene.add(directionalLight);
+            
+            // 添加点光源增加趣味性
+            const pointLight = new THREE.PointLight(0xFFD700, 0.5, 50);
+            pointLight.position.set(0, 10, 0);
+            scene.add(pointLight);
+
+            // 监听窗口大小变化
+            window.addEventListener('resize', onWindowResize, false);
+            
+            // 显示移动端控制器
+            if (isMobile) {
+                mobileControlsEl.classList.remove('hidden');
+            }
+
+            // 初始设置菜单
+            showMenu();
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // --- 游戏对象创建 ---
+
+        function createPlayer() {
+            // Q版小人 - 更可爱的设计
+            const bodyGeometry = new THREE.CylinderGeometry(0.3, 0.3, 1.0, 8);
+            const headGeometry = new THREE.SphereGeometry(0.4, 16, 16);
+            const armGeometry = new THREE.CylinderGeometry(0.08, 0.08, 0.6, 6); // 使用圆柱体代替胶囊
+            
+            // 彩虹渐变材质
+            const bodyMaterial = new THREE.MeshLambertMaterial({ color: 0x32CD32 });
+            const headMaterial = new THREE.MeshLambertMaterial({ color: 0xFFEB3B });
+            const armMaterial = new THREE.MeshLambertMaterial({ color: 0xFF6B35 });
+
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            const head = new THREE.Mesh(headGeometry, headMaterial);
+            
+            // 手臂（使用圆柱体）
+            const armLeft = new THREE.Mesh(armGeometry, armMaterial);
+            const armRight = new THREE.Mesh(armGeometry, armMaterial);
+
+            head.position.y = 0.9;
+            
+            // 手臂位置和旋转
+            armLeft.position.set(-0.4, 0.2, 0);
+            armLeft.rotation.z = Math.PI / 3;
+            armRight.position.set(0.4, 0.2, 0);
+            armRight.rotation.z = -Math.PI / 3;
+
+            player = new THREE.Group();
+            player.add(body);
+            player.add(head);
+            player.add(armLeft);
+            player.add(armRight);
+
+            player.position.set(0, 0.5, 0);
+            player.name = 'player';
+            scene.add(player);
+            
+            console.log('✅ 角色创建成功');
+        }
+
+        function createStar(position) {
+            // 更闪亮的星星
+            const geometry = new THREE.OctahedronGeometry(0.35);
+            const material = new THREE.MeshBasicMaterial({ 
+                color: 0xFFD700,
+                emissive: 0xFFAA00,
+                emissiveIntensity: 0.5
+            });
+            const star = new THREE.Mesh(geometry, material);
+            star.position.copy(position);
+            star.name = 'star';
+            
+            // 添加外光晕
+            const glowGeometry = new THREE.SphereGeometry(0.5, 16, 16);
+            const glowMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0xFFFF00,
+                transparent: true,
+                opacity: 0.3
+            });
+            const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+            star.add(glow);
+            
+            scene.add(star);
+
+            // 旋转和缩放动画
+            const starRotationClip = new THREE.AnimationClip('rotation', 2, [
+                new THREE.VectorKeyframeTrack('.rotation', [0, 1, 2], [0, 0, 0, 0, Math.PI, 0, 0, Math.PI * 2, 0])
+            ]);
+            const starMixer = new THREE.AnimationMixer(star);
+            const action = starMixer.clipAction(starRotationClip);
+            action.play();
+
+            star.mixer = starMixer;
+            star.baseY = position.y;
+            return star;
+        }
+        
+        function createTreasure(position) {
+            // 宝箱 - 更精致
+            const boxGeometry = new THREE.BoxGeometry(0.6, 0.5, 0.4);
+            const lidGeometry = new THREE.BoxGeometry(0.65, 0.1, 0.45);
+            const boxMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+            const lidMaterial = new THREE.MeshLambertMaterial({ color: 0xFFD700 });
+            
+            const box = new THREE.Mesh(boxGeometry, boxMaterial);
+            const lid = new THREE.Mesh(lidGeometry, lidMaterial);
+            lid.position.y = 0.3;
+            
+            const treasure = new THREE.Group();
+            treasure.add(box);
+            treasure.add(lid);
+            treasure.position.copy(position);
+            treasure.name = 'treasure';
+            
+            // 添加闪光效果
+            const sparkleGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+            const sparkleMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0xFFFFFF,
+                transparent: true,
+                opacity: 0.8
+            });
+            const sparkle = new THREE.Mesh(sparkleGeometry, sparkleMaterial);
+            sparkle.position.y = 0.5;
+            treasure.add(sparkle);
+            
+            scene.add(treasure);
+            treasures.push(treasure);
+            
+            treasure.baseY = position.y;
+            return treasure;
+        }
+        
+        function createParticle(position, color = 0xFFD700) {
+            const geometry = new THREE.SphereGeometry(0.1, 8, 8);
+            const material = new THREE.MeshBasicMaterial({ color, transparent: true });
+            const particle = new THREE.Mesh(geometry, material);
+            particle.position.copy(position);
+            
+            particle.velocity = new THREE.Vector3(
+                (Math.random() - 0.5) * 0.2,
+                Math.random() * 0.3 + 0.2,
+                (Math.random() - 0.5) * 0.2
+            );
+            particle.life = 1.0;
+            
+            scene.add(particle);
+            particles.push(particle);
+        }
+        
+        function updateParticles(delta) {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.position.add(p.velocity.clone().multiplyScalar(delta * 10));
+                p.velocity.y -= delta * 2; // 重力
+                p.life -= delta;
+                p.material.opacity = p.life;
+                
+                if (p.life <= 0) {
+                    scene.remove(p);
+                    particles.splice(i, 1);
+                }
+            }
+        }
+
+        // --- 场景生成器 ---
+
+        function createScene(level) {
+            // 清理旧场景元素
+            const toRemove = [];
+            scene.children.forEach(child => {
+                if (child.name !== 'player' && child.type !== 'AmbientLight' && 
+                    child.type !== 'DirectionalLight' && child.type !== 'PointLight') {
+                    toRemove.push(child);
+                }
+            });
+            toRemove.forEach(child => scene.remove(child));
+            
+            // 清理数组
+            clouds = [];
+            treasures = [];
+            particles = [];
+            
+            // 平台材质 - 更鲜艳
+            const woodMaterial = new THREE.MeshLambertMaterial({ color: 0xD2691E });
+            const pathWidth = 4;
+            const pathLength = 40;
+            const starPositions = [];
+            const treasurePositions = [];
+
+            // 重置数值
+            courageValue = 0;
+            treasureValue = 0;
+            distanceValue = 0;
+            courageValueEl.textContent = '0';
+            treasureValueEl.textContent = '0';
+            distanceValueEl.textContent = '0';
+            progressFillEl.style.width = '0%';
+
+            switch (level) {
+                case 1: // 🌈 场景 1：草地练习区
+                    renderer.setClearColor(0x87CEEB);
+                    scene.fog.color.set(0x87CEEB);
+                    camera.position.set(0, 4, 8);
+
+                    // 1. 主平台
+                    const platform1 = new THREE.Mesh(
+                        new THREE.BoxGeometry(pathWidth, 0.3, pathLength),
+                        woodMaterial
+                    );
+                    platform1.position.set(0, 0, -pathLength / 2 + 10);
+                    scene.add(platform1);
+
+                    // 2. 彩色草地
+                    const grassMaterial = new THREE.MeshLambertMaterial({ color: 0x7CFC00 });
+                    const grass = new THREE.Mesh(
+                        new THREE.PlaneGeometry(100, 100),
+                        grassMaterial
+                    );
+                    grass.rotation.x = -Math.PI / 2;
+                    grass.position.y = -1.5;
+                    scene.add(grass);
+                    
+                    // 3. 添加花朵装饰
+                    for (let i = 0; i < 20; i++) {
+                        const flowerColors = [0xFF69B4, 0xFFD700, 0xFF6347, 0x9370DB];
+                        const flowerMaterial = new THREE.MeshBasicMaterial({ 
+                            color: flowerColors[Math.floor(Math.random() * flowerColors.length)]
+                        });
+                        const flower = new THREE.Mesh(
+                            new THREE.CircleGeometry(0.3, 6),
+                            flowerMaterial
+                        );
+                        flower.rotation.x = -Math.PI / 2;
+                        flower.position.set(
+                            Math.random() * 40 - 20,
+                            -1.4,
+                            Math.random() * 40 - 20
+                        );
+                        scene.add(flower);
+                    }
+                    
+                    // 4. 添加树木
+                    for (let i = 0; i < 8; i++) {
+                        const treeGroup = new THREE.Group();
+                        const trunk = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.3, 0.4, 2, 8),
+                            new THREE.MeshLambertMaterial({ color: 0x8B4513 })
+                        );
+                        const leaves = new THREE.Mesh(
+                            new THREE.SphereGeometry(1.5, 8, 8),
+                            new THREE.MeshLambertMaterial({ color: 0x228B22 })
+                        );
+                        leaves.position.y = 2;
+                        treeGroup.add(trunk);
+                        treeGroup.add(leaves);
+                        treeGroup.position.set(
+                            Math.random() * 30 - 15,
+                            -0.5,
+                            Math.random() * 30 - 15
+                        );
+                        if (Math.abs(treeGroup.position.x) > pathWidth || 
+                            Math.abs(treeGroup.position.z - (-pathLength/2 + 10)) > pathLength/2) {
+                            scene.add(treeGroup);
+                        }
+                    }
+
+                    // 星星和宝箱位置
+                    starPositions.push(new THREE.Vector3(0, 0.6, 8));
+                    starPositions.push(new THREE.Vector3(1, 0.6, 0));
+                    starPositions.push(new THREE.Vector3(-1, 0.6, -8));
+                    starPositions.push(new THREE.Vector3(0, 0.6, -16));
+                    starPositions.push(new THREE.Vector3(0, 0.6, -24));
+                    
+                    treasurePositions.push(new THREE.Vector3(1.5, 0.4, -4));
+                    treasurePositions.push(new THREE.Vector3(-1.5, 0.4, -20));
+                    break;
+
+                case 2: // 🌤 场景 2：空中彩虹桥
+                    renderer.setClearColor(0xADD8E6);
+                    scene.fog.color.set(0xADD8E6);
+                    camera.position.set(0, 8, 10);
+
+                    // 1. 彩虹桥
+                    const bridgeHeight = 6;
+                    const rainbowColors = [0xFF0000, 0xFF7F00, 0xFFFF00, 0x00FF00, 0x0000FF, 0x4B0082, 0x9400D3];
+                    
+                    for (let i = 0; i < 7; i++) {
+                        const segment = new THREE.Mesh(
+                            new THREE.BoxGeometry(pathWidth / 7, 0.4, pathLength),
+                            new THREE.MeshLambertMaterial({ color: rainbowColors[i] })
+                        );
+                        segment.position.set(
+                            -pathWidth/2 + pathWidth/7 * i + pathWidth/14,
+                            bridgeHeight,
+                            -pathLength / 2 + 10
+                        );
+                        scene.add(segment);
+                    }
+                    
+                    // 2. 护栏
+                    const railMaterial = new THREE.MeshLambertMaterial({ color: 0xFFFFFF });
+                    for (let z = 10; z > -pathLength + 10; z -= 3) {
+                        const railL = new THREE.Mesh(
+                            new THREE.BoxGeometry(0.1, 1, 0.1),
+                            railMaterial
+                        );
+                        railL.position.set(-pathWidth/2, bridgeHeight + 0.5, z);
+                        scene.add(railL);
+                        
+                        const railR = new THREE.Mesh(
+                            new THREE.BoxGeometry(0.1, 1, 0.1),
+                            railMaterial
+                        );
+                        railR.position.set(pathWidth/2, bridgeHeight + 0.5, z);
+                        scene.add(railR);
+                    }
+
+                    // 3. 飘动的云朵
+                    const cloudMaterial = new THREE.MeshLambertMaterial({ 
+                        color: 0xFFFFFF,
+                        transparent: true,
+                        opacity: 0.9
+                    });
+                    for (let i = 0; i < 25; i++) {
+                        const cloudGroup = new THREE.Group();
+                        for (let j = 0; j < 3; j++) {
+                            const cloudPart = new THREE.Mesh(
+                                new THREE.SphereGeometry(THREE.MathUtils.randFloat(0.8, 2), 8, 8),
+                                cloudMaterial
+                            );
+                            cloudPart.position.set(
+                                THREE.MathUtils.randFloat(-1, 1),
+                                THREE.MathUtils.randFloat(-0.5, 0.5),
+                                THREE.MathUtils.randFloat(-1, 1)
+                            );
+                            cloudGroup.add(cloudPart);
+                        }
+                        cloudGroup.position.set(
+                            THREE.MathUtils.randFloat(-30, 30),
+                            THREE.MathUtils.randFloat(bridgeHeight - 4, bridgeHeight + 2),
+                            THREE.MathUtils.randFloat(-40, 20)
+                        );
+                        cloudGroup.userData.speed = THREE.MathUtils.randFloat(0.01, 0.03);
+                        scene.add(cloudGroup);
+                        clouds.push(cloudGroup);
+                    }
+                    
+                    // 4. 飞鸟
+                    for (let i = 0; i < 5; i++) {
+                        const birdGeometry = new THREE.ConeGeometry(0.2, 0.5, 4);
+                        const birdMaterial = new THREE.MeshLambertMaterial({ color: 0xFFD700 });
+                        const bird = new THREE.Mesh(birdGeometry, birdMaterial);
+                        bird.position.set(
+                            THREE.MathUtils.randFloat(-20, 20),
+                            bridgeHeight + THREE.MathUtils.randFloat(2, 5),
+                            THREE.MathUtils.randFloat(-30, 10)
+                        );
+                        bird.rotation.x = Math.PI / 2;
+                        bird.userData.speed = THREE.MathUtils.randFloat(0.02, 0.05);
+                        bird.userData.radius = THREE.MathUtils.randFloat(5, 10);
+                        bird.userData.angle = Math.random() * Math.PI * 2;
+                        scene.add(bird);
+                        clouds.push(bird); // 复用clouds数组做动画
+                    }
+
+                    // 星星和宝箱位置
+                    starPositions.push(new THREE.Vector3(0, bridgeHeight + 0.6, 8));
+                    starPositions.push(new THREE.Vector3(1, bridgeHeight + 0.6, 0));
+                    starPositions.push(new THREE.Vector3(-1, bridgeHeight + 0.6, -8));
+                    starPositions.push(new THREE.Vector3(0, bridgeHeight + 0.6, -16));
+                    starPositions.push(new THREE.Vector3(0, bridgeHeight + 0.6, -24));
+                    
+                    treasurePositions.push(new THREE.Vector3(1.5, bridgeHeight + 0.4, -4));
+                    treasurePositions.push(new THREE.Vector3(-1.5, bridgeHeight + 0.4, -12));
+                    treasurePositions.push(new THREE.Vector3(0, bridgeHeight + 0.4, -28));
+                    break;
+                
+                case 3: // ☁️ 场景 3：云端城堡
+                    renderer.setClearColor(0xFFB6C1);
+                    scene.fog.color.set(0xFFB6C1);
+                    camera.position.set(0, 18, 12);
+
+                    // 1. 多个漂浮平台
+                    const platformY = 16;
+                    const platformColors = [0xFF69B4, 0xDDA0DD, 0x9370DB, 0xFFD700, 0xFF6347];
+                    const rainbowColorsLevel3 = [0xFF0000, 0xFF7F00, 0xFFFF00, 0x00FF00, 0x0000FF, 0x4B0082, 0x9400D3];
+                    
+                    const platforms = [
+                        { size: [6, 0.5, 6], pos: [0, platformY, 8] },
+                        { size: [5, 0.5, 5], pos: [0, platformY, 0] },
+                        { size: [4, 0.5, 6], pos: [0, platformY + 0.5, -8] },
+                        { size: [5, 0.5, 5], pos: [5, platformY + 1, -16] },
+                        { size: [6, 0.5, 6], pos: [0, platformY + 1.5, -24] }
+                    ];
+                    
+                    platforms.forEach((p, i) => {
+                        const platform = new THREE.Mesh(
+                            new THREE.BoxGeometry(...p.size),
+                            new THREE.MeshLambertMaterial({ color: platformColors[i % platformColors.length] })
+                        );
+                        platform.position.set(...p.pos);
+                        scene.add(platform);
+                    });
+                    
+                    // 2. 城堡塔楼装饰
+                    const towerMaterial = new THREE.MeshLambertMaterial({ color: 0xFFD700 });
+                    for (let i = 0; i < 3; i++) {
+                        const tower = new THREE.Mesh(
+                            new THREE.CylinderGeometry(0.5, 0.7, 4, 8),
+                            towerMaterial
+                        );
+                        const roof = new THREE.Mesh(
+                            new THREE.ConeGeometry(0.8, 1.5, 8),
+                            new THREE.MeshLambertMaterial({ color: 0xFF1493 })
+                        );
+                        roof.position.y = 2.75;
+                        
+                        const towerGroup = new THREE.Group();
+                        towerGroup.add(tower);
+                        towerGroup.add(roof);
+                        towerGroup.position.set(
+                            (i - 1) * 4,
+                            platformY - 1.5,
+                            -28
+                        );
+                        scene.add(towerGroup);
+                    }
+
+                    // 3. 多层云海
+                    for (let layer = 0; layer < 3; layer++) {
+                        const cloudY = platformY - 5 - layer * 3;
+                        const cloudLayerMaterial = new THREE.MeshLambertMaterial({ 
+                            color: 0xFFFFFF,
+                            transparent: true,
+                            opacity: 0.7 - layer * 0.1
+                        });
+                        
+                        for (let i = 0; i < 30; i++) {
+                            const cloudGroup = new THREE.Group();
+                            for (let j = 0; j < 4; j++) {
+                                const cloudPart = new THREE.Mesh(
+                                    new THREE.SphereGeometry(THREE.MathUtils.randFloat(1.5, 3), 8, 8),
+                                    cloudLayerMaterial
+                                );
+                                cloudPart.position.set(
+                                    THREE.MathUtils.randFloat(-2, 2),
+                                    THREE.MathUtils.randFloat(-1, 1),
+                                    THREE.MathUtils.randFloat(-2, 2)
+                                );
+                                cloudGroup.add(cloudPart);
+                            }
+                            cloudGroup.position.set(
+                                THREE.MathUtils.randFloat(-40, 40),
+                                cloudY,
+                                THREE.MathUtils.randFloat(-50, 30)
+                            );
+                            cloudGroup.userData.speed = THREE.MathUtils.randFloat(0.005, 0.02);
+                            cloudGroup.userData.layer = layer;
+                            scene.add(cloudGroup);
+                            clouds.push(cloudGroup);
+                        }
+                    }
+                    
+                    // 4. 漂浮的星星装饰
+                    for (let i = 0; i < 10; i++) {
+                        const decorStar = new THREE.Mesh(
+                            new THREE.OctahedronGeometry(0.3),
+                            new THREE.MeshBasicMaterial({ color: 0xFFFFFF, transparent: true, opacity: 0.7 })
+                        );
+                        decorStar.position.set(
+                            THREE.MathUtils.randFloat(-15, 15),
+                            platformY + THREE.MathUtils.randFloat(3, 8),
+                            THREE.MathUtils.randFloat(-30, 10)
+                        );
+                        scene.add(decorStar);
+                    }
+                    
+                    // 5. 彩虹
+                    const rainbowRadius = 20;
+                    for (let i = 0; i < 7; i++) {
+                        const arc = new THREE.Mesh(
+                            new THREE.TorusGeometry(rainbowRadius + i * 0.5, 0.3, 8, 50, Math.PI),
+                            new THREE.MeshBasicMaterial({ 
+                                color: rainbowColorsLevel3[i],
+                                transparent: true,
+                                opacity: 0.8
+                            })
+                        );
+                        arc.position.set(15, platformY, -40);
+                        arc.rotation.y = Math.PI / 6;
+                        scene.add(arc);
+                    }
+
+                    // 星星和宝箱位置
+                    starPositions.push(new THREE.Vector3(0, platformY + 0.6, 6));
+                    starPositions.push(new THREE.Vector3(0, platformY + 0.6, -2));
+                    starPositions.push(new THREE.Vector3(0, platformY + 1.1, -8));
+                    starPositions.push(new THREE.Vector3(5, platformY + 1.6, -16));
+                    starPositions.push(new THREE.Vector3(0, platformY + 2.1, -24));
+                    
+                    treasurePositions.push(new THREE.Vector3(2, platformY + 0.4, 4));
+                    treasurePositions.push(new THREE.Vector3(-2, platformY + 0.4, -4));
+                    treasurePositions.push(new THREE.Vector3(3, platformY + 1.4, -14));
+                    treasurePositions.push(new THREE.Vector3(-2, platformY + 1.9, -22));
+                    break;
+            }
+
+            // 放置星星和宝箱
+            starPositions.forEach(pos => createStar(pos));
+            treasurePositions.forEach(pos => createTreasure(pos));
+
+            // 将玩家移到起点
+            if (level === 1) player.position.set(0, 0.5, 8);
+            if (level === 2) player.position.set(0, 6.5, 8);
+            if (level === 3) player.position.set(0, 16.5, 6);
+            
+            // 播放开始音效
+            playSound(523, 0.1, 'sine');
+            playSound(659, 0.1, 'sine');
+        }
+
+
+        // --- UI 交互逻辑 ---
+
+        function showMenu() {
+            isGameRunning = false;
+            isPaused = false;
+            loadingEl.classList.add('hidden');
+            menuEl.classList.remove('hidden');
+            pauseMenuEl.classList.add('hidden');
+            gameUIEl.classList.add('hidden');
+            messageBoxEl.classList.remove('show');
+        }
+
+        function startGame(level) {
+            console.log('🎮 开始游戏，关卡:', level);
+            
+            // 确保player已创建
+            if (!player) {
+                console.error('❌ Player 还未创建，请稍后重试');
+                setTimeout(() => startGame(level), 100);
+                return;
+            }
+            
+            try {
+                currentScene = level;
+                createScene(level);
+                console.log('✅ 关卡', level, '创建成功');
+            } catch (error) {
+                console.error('❌ 关卡创建失败:', error);
+                showMessage('关卡加载失败: ' + error.message, 3000, '#FF0000');
+                showMenu();
+                return;
+            }
+            
+            // 隐藏菜单，显示游戏 UI
+            menuEl.classList.add('hidden');
+            pauseMenuEl.classList.add('hidden');
+            gameUIEl.classList.remove('hidden');
+            
+            // 显示移动端控制
+            if (isMobile) {
+                mobileControlsEl.classList.remove('hidden');
+            }
+
+            isGameRunning = true;
+            isPaused = false;
+            playerMoodEl.textContent = moods.calm;
+            
+            // 显示提示
+            const tips = [
+                '⭐ 收集所有星星！',
+                '🎁 寻找隐藏的宝箱！',
+                '☁️ 不要害怕掉下去～'
+            ];
+            showMessage(tips[Math.floor(Math.random() * tips.length)], 2500, '#32CD32');
+        }
+        
+        function pauseGame() {
+            if (!isGameRunning) return;
+            isPaused = true;
+            isGameRunning = false;
+            gameUIEl.classList.add('hidden');
+            pauseMenuEl.classList.remove('hidden');
+            playSound(440, 0.1, 'square');
+        }
+        
+        function resumeGame() {
+            if (isPaused) {
+                isPaused = false;
+                isGameRunning = true;
+                pauseMenuEl.classList.add('hidden');
+                gameUIEl.classList.remove('hidden');
+                playSound(523, 0.1, 'sine');
+            }
+        }
+        
+        function restartGame() {
+            startGame(currentScene);
+        }
+
+        function showMessage(text, duration = 3000, color = '#FF6B35') {
+            messageBoxEl.innerHTML = text;
+            messageBoxEl.style.color = color;
+            messageBoxEl.classList.add('show');
+            setTimeout(() => {
+                messageBoxEl.classList.remove('show');
+            }, duration);
+        }
+        
+        // 移动端触摸控制
+        function handleTouch(direction, isPressed) {
+            const keyMap = {
+                'up': 'w',
+                'left': 'a',
+                'right': 'd'
+            };
+            keyState[keyMap[direction]] = isPressed;
+            
+            if (isPressed) {
+                playSound(440, 0.05, 'square');
+            }
+        }
+
+
+        // --- 游戏逻辑 ---
+
+        function handleControls() {
+            if (!isGameRunning) return;
+
+            let moveX = 0;
+            let moveZ = 0;
+            let isMoving = false;
+
+            // WASD 或方向键控制
+            if (keyState['ArrowUp'] || keyState['w'] || keyState['arrowup']) {
+                moveZ -= 1;
+                isMoving = true;
+            }
+            if (keyState['ArrowLeft'] || keyState['a'] || keyState['arrowleft']) {
+                moveX -= 1;
+                isMoving = true;
+            }
+            if (keyState['ArrowRight'] || keyState['d'] || keyState['arrowright']) {
+                moveX += 1;
+                isMoving = true;
+            }
+
+            // 计算速度
+            let currentSpeed = playerSpeed;
+
+            if (isMoving) {
+                // 归一化移动向量
+                const magnitude = Math.sqrt(moveX * moveX + moveZ * moveZ);
+                moveX /= magnitude;
+                moveZ /= magnitude;
+                
+                // 移动玩家
+                player.position.x += moveX * currentSpeed;
+                player.position.z += moveZ * currentSpeed;
+                
+                // 更新距离（只有向前移动才计算）
+                if (moveZ < 0) {
+                    distanceValue += Math.abs(moveZ * currentSpeed * 10);
+                    distanceValueEl.textContent = Math.floor(distanceValue);
+                    
+                    // 更新进度条（假设目标是30米）
+                    const progress = Math.min((distanceValue / 30) * 100, 100);
+                    progressFillEl.style.width = progress + '%';
+                }
+
+                // 角色动画 - 轻微晃动
+                player.rotation.z = Math.sin(Date.now() * 0.01) * 0.05;
+                
+                // 调整表情
+                playerMoodEl.textContent = moods.walking;
+            } else {
+                // 停止时，根据高度调整表情
+                player.rotation.z = 0;
+                const currentY = player.position.y;
+                if (currentY > 12) {
+                    playerMoodEl.textContent = moods.nervous;
+                } else {
+                    playerMoodEl.textContent = moods.calm;
+                }
+            }
+            
+            // 限制X轴移动范围
+            const maxX = 3;
+            player.position.x = Math.max(-maxX, Math.min(maxX, player.position.x));
+        }
+
+        function checkCollisions() {
+            const playerPos = player.position;
+            const playerRadius = 0.6;
+            
+            // 1. 掉落检测
+            let safeY = 0;
+            if (currentScene === 1) safeY = 0;
+            if (currentScene === 2) safeY = 6;
+            if (currentScene === 3) safeY = 16;
+            
+            const dropThreshold = safeY - 4;
+
+            if (playerPos.y < dropThreshold) {
+                // 掉落效果
+                showMessage('☁️ 没关系！云朵会托住你～', 2500, '#87CEEB');
+                playerMoodEl.textContent = moods.surprised;
+                playSound(330, 0.3, 'sine');
+                
+                // 闪白效果
+                renderer.setClearColor(0xFFFFFF);
+                setTimeout(() => {
+                    // 重置位置
+                    if (currentScene === 1) {
+                        player.position.set(0, 0.5, 8);
+                        renderer.setClearColor(0x87CEEB);
+                    }
+                    if (currentScene === 2) {
+                        player.position.set(0, 6.5, 8);
+                        renderer.setClearColor(0xADD8E6);
+                    }
+                    if (currentScene === 3) {
+                        player.position.set(0, 16.5, 6);
+                        renderer.setClearColor(0xFFB6C1);
+                    }
+                    playerMoodEl.textContent = moods.calm;
+                }, 600);
+                
+                return;
+            }
+
+            // 2. 星星收集
+            const stars = scene.children.filter(c => c.name === 'star');
+            stars.forEach(star => {
+                const distance = playerPos.distanceTo(star.position);
+                if (distance < playerRadius + 0.5) {
+                    // 收集成功
+                    scene.remove(star);
+                    courageValue++;
+                    courageValueEl.textContent = courageValue;
+                    showMessage('⭐ 勇气值 +1！太棒了！', 1500, '#FFD700');
+                    playerMoodEl.textContent = moods.success;
+                    playSound(659, 0.15, 'sine');
+                    playSound(784, 0.15, 'sine');
+                    
+                    // 粒子效果
+                    for (let i = 0; i < 10; i++) {
+                        createParticle(star.position.clone(), 0xFFD700);
+                    }
+                    
+                    setTimeout(() => {
+                        if (isGameRunning) playerMoodEl.textContent = moods.walking;
+                    }, 1000);
+
+                    // 胜利检测
+                    if (courageValue >= 5) {
+                        showMessage('🎉 恭喜通关！你真是个勇敢的小勇士！🏆', 5000, '#32CD32');
+                        playerMoodEl.textContent = moods.success;
+                        playSound(523, 0.2, 'sine');
+                        playSound(659, 0.2, 'sine');
+                        playSound(784, 0.2, 'sine');
+                        
+                        // 胜利粒子效果
+                        for (let i = 0; i < 30; i++) {
+                            setTimeout(() => {
+                                createParticle(
+                                    playerPos.clone().add(new THREE.Vector3(
+                                        (Math.random() - 0.5) * 2,
+                                        Math.random() * 2,
+                                        (Math.random() - 0.5) * 2
+                                    )),
+                                    [0xFFD700, 0xFF69B4, 0x87CEEB, 0x32CD32][Math.floor(Math.random() * 4)]
+                                );
+                            }, i * 50);
+                        }
+                        
+                        isGameRunning = false;
+                        setTimeout(showMenu, 6000);
+                    }
+                }
+            });
+            
+            // 3. 宝箱收集
+            treasures.forEach((treasure, index) => {
+                if (!treasure.parent) return; // 已被收集
+                const distance = playerPos.distanceTo(treasure.position);
+                if (distance < playerRadius + 0.6) {
+                    scene.remove(treasure);
+                    treasureValue++;
+                    treasureValueEl.textContent = treasureValue;
+                    showMessage('🎁 发现宝箱！+1', 1500, '#FF69B4');
+                    playerMoodEl.textContent = moods.success;
+                    playSound(784, 0.15, 'triangle');
+                    playSound(880, 0.15, 'triangle');
+                    
+                    // 宝箱粒子效果
+                    for (let i = 0; i < 15; i++) {
+                        createParticle(treasure.position.clone(), 0xFFD700);
+                    }
+                    
+                    setTimeout(() => {
+                        if (isGameRunning) playerMoodEl.textContent = moods.walking;
+                    }, 1000);
+                }
+            });
+        }
+
+        function updateCamera() {
+            const targetPos = player.position;
+            
+            // 动态相机偏移
+            let offsetX = player.position.x * 0.2; // 轻微跟随X轴
+            let offsetY = 4;
+            let offsetZ = 6;
+
+            // 根据场景调整
+            if (currentScene === 2) {
+                offsetY = 5;
+                offsetZ = 8;
+            }
+            if (currentScene === 3) {
+                offsetY = 6;
+                offsetZ = 10;
+            }
+            
+            const cameraTargetX = targetPos.x + offsetX;
+            const cameraTargetY = targetPos.y + offsetY;
+            const cameraTargetZ = targetPos.z + offsetZ;
+
+            // 平滑跟随
+            const smoothness = 0.08;
+            camera.position.x += (cameraTargetX - camera.position.x) * smoothness;
+            camera.position.y += (cameraTargetY - camera.position.y) * smoothness;
+            camera.position.z += (cameraTargetZ - camera.position.z) * smoothness;
+
+            camera.lookAt(targetPos.x, targetPos.y + 0.5, targetPos.z);
+        }
+        
+        function updateEnvironment(delta) {
+            // 云朵和环境动画
+            clouds.forEach(cloud => {
+                if (cloud.geometry && cloud.geometry.type === 'ConeGeometry') {
+                    // 鸟类飞行
+                    cloud.userData.angle += cloud.userData.speed;
+                    const radius = cloud.userData.radius;
+                    cloud.position.x = Math.cos(cloud.userData.angle) * radius;
+                    cloud.position.z = Math.sin(cloud.userData.angle) * radius - 10;
+                    cloud.rotation.y = cloud.userData.angle + Math.PI / 2;
+                } else {
+                    // 云朵漂移
+                    cloud.position.x += cloud.userData.speed;
+                    if (cloud.position.x > 50) cloud.position.x = -50;
+                }
+            });
+            
+            // 星星上下浮动和旋转
+            scene.children.filter(c => c.name === 'star').forEach(star => {
+                if (star.mixer) star.mixer.update(delta);
+                star.position.y = star.baseY + Math.sin(Date.now() * 0.003) * 0.2;
+                star.rotation.y += delta * 2;
+            });
+            
+            // 宝箱上下浮动和闪光
+            treasures.forEach(treasure => {
+                if (!treasure.parent) return;
+                treasure.position.y = treasure.baseY + Math.sin(Date.now() * 0.002) * 0.15;
+                treasure.rotation.y += delta * 0.5;
+                
+                // 闪光效果
+                const sparkle = treasure.children[2];
+                if (sparkle) {
+                    sparkle.scale.setScalar(1 + Math.sin(Date.now() * 0.01) * 0.5);
+                }
+            });
+            
+            // 更新粒子
+            updateParticles(delta);
+        }
+        
+        const clock = new THREE.Clock();
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const delta = clock.getDelta();
+            
+            if (isGameRunning) {
+                handleControls();
+                checkCollisions();
+                updateCamera();
+            }
+            
+            // 环境动画始终运行
+            updateEnvironment(delta);
+
+            renderer.render(scene, camera);
+        }
+
+        // --- 事件监听 ---
+
+        function handleKeyDown(event) {
+            const key = event.key.toLowerCase();
+            keyState[key] = true;
+            
+            // 阻止方向键滚动页面
+            if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd', ' '].includes(key)) {
+                event.preventDefault();
+            }
+            
+            // 空格键暂停/恢复
+            if (key === ' ' && isGameRunning) {
+                pauseGame();
+            } else if (key === ' ' && isPaused) {
+                resumeGame();
+            }
+        }
+
+        function handleKeyUp(event) {
+            keyState[event.key.toLowerCase()] = false;
+        }
+
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('keyup', handleKeyUp);
+        
+        // 防止上下文菜单
+        window.addEventListener('contextmenu', (e) => e.preventDefault());
+        
+        // 触摸事件防止缩放
+        document.addEventListener('touchmove', (e) => {
+            if (e.touches.length > 1) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        // 初始化游戏
+        window.addEventListener('DOMContentLoaded', function () {
+            console.log('🎮 游戏初始化中...');
+            
+            // 检查Three.js是否加载
+            if (typeof THREE === 'undefined') {
+                console.error('❌ Three.js 未加载！');
+                alert('游戏加载失败，请刷新页面重试');
+                return;
+            }
+            
+            try {
+                init();
+                createPlayer();
+                animate();
+                console.log('✅ 游戏已加载完成！可以点击按钮开始游戏');
+            } catch (error) {
+                console.error('❌ 游戏初始化失败:', error);
+                alert('游戏初始化失败: ' + error.message);
+            }
+        });
+    </script>
+</body>
+</html>

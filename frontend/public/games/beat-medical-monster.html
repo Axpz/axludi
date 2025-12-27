@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>医学单词怪兽冒险游戏</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            padding: 10px;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            text-align: center;
+            position: relative;
+            padding-bottom: 20px;
+        }
+
+        .background-elements {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .background-element {
+            position: absolute;
+            opacity: 0.05;
+            font-size: 60px;
+        }
+
+        .bg-element-1 { top: 5%; left: 5%; }
+        .bg-element-2 { top: 15%; right: 10%; }
+        .bg-element-3 { bottom: 10%; left: 10%; }
+        .bg-element-4 { bottom: 20%; right: 15%; }
+
+        h1 {
+            color: #ffffff;
+            font-size: 1.8em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            background: linear-gradient(45deg, #3498db, #2ecc71);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .instructions {
+            color: #ffffff;
+            font-size: 16px;
+            margin-bottom: 15px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            gap: 10px;
+            margin: 10px 0;
+            flex-wrap: wrap;
+        }
+
+        .stat-box {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px 12px;
+            border-radius: 8px;
+            min-width: 70px;
+            color: #ffffff;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .monster-area {
+            background: rgba(44, 62, 80, 0.3);
+            border-radius: 12px;
+            padding: 15px;
+            margin: 15px 5px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .monster {
+            font-size: 60px;
+            margin: 10px auto;
+            animation: float 3s ease-in-out infinite;
+            text-shadow: 0 0 15px rgba(52, 152, 219, 0.5);
+        }
+
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+            100% { transform: translateY(0px); }
+        }
+
+        .monster-name {
+            color: #ffffff;
+            font-size: 18px;
+            margin: 10px 0;
+            font-weight: bold;
+        }
+
+        .health-container {
+            width: 90%;
+            height: 20px;
+            background: #e74c3c;
+            border-radius: 10px;
+            margin: 10px auto;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .health-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #2ecc71, #3498db);
+            width: 100%;
+            transition: width 0.5s ease;
+        }
+
+        .health-text {
+            color: #ffffff;
+            font-size: 14px;
+            margin-top: 5px;
+            font-weight: bold;
+        }
+
+        .game-area {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .fragments-section, .matched-section {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            min-height: 120px;
+            padding: 5px;
+        }
+
+        .fragment-card {
+            background: linear-gradient(135deg, #ecf0f1, #bdc3c7);
+            padding: 12px 8px;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+            min-width: 100px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 14px;
+            border: 2px solid #34495e;
+            word-break: break-word;
+        }
+
+        .fragment-card:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+        }
+
+        .fragment-card.selected {
+            background: linear-gradient(135deg, #f1c40f, #f39c12);
+            transform: scale(1.1);
+            box-shadow: 0 6px 12px rgba(241, 196, 15, 0.4);
+        }
+
+        .matched-card {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            padding: 15px 10px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0, 0.3);
+            transition: all 0.3s ease;
+            min-width: 160px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 15px;
+            animation: appear 0.5s ease;
+            border: 2px solid #2c3e50;
+            word-break: break-word;
+        }
+
+        @keyframes appear {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .matched-card.disappearing {
+            animation: disappear 0.5s ease forwards;
+        }
+
+        @keyframes disappear {
+            to { transform: scale(0.5); opacity: 0; }
+        }
+
+        .controls {
+            text-align: center;
+            margin: 15px 0;
+        }
+
+        .btn {
+            padding: 12px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            margin: 0 5px;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+            min-width: 100px;
+        }
+
+        .reset-btn {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .feedback {
+            color: #ffffff;
+            font-size: 16px;
+            margin: 10px 0;
+            min-height: 25px;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+
+        .success {
+            color: #2ecc71;
+        }
+
+        .error {
+            color: #e74c3c;
+        }
+
+        .completed {
+            text-align: center;
+            padding: 25px 15px;
+            background: rgba(46, 204, 113, 0.2);
+            border-radius: 12px;
+            margin: 15px 10px;
+            color: #ffffff;
+            border: 2px solid #2ecc71;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .completed h2 {
+            font-size: 1.8em;
+            margin-bottom: 10px;
+            color: #2ecc71;
+        }
+
+        .completed p {
+            font-size: 16px;
+            margin-bottom: 15px;
+        }
+
+        .section h3 {
+            color: #ffffff;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        /* 隐藏滚动条 */
+        body::-webkit-scrollbar {
+            display: none;
+        }
+
+        body {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        @media (min-width: 768px) {
+            h1 {
+                font-size: 2.2em;
+            }
+            
+            .instructions {
+                font-size: 18px;
+            }
+            
+            .fragment-card {
+                min-width: 120px;
+                padding: 15px;
+                font-size: 14px;
+            }
+            
+            .matched-card {
+                min-width: 180px;
+                font-size: 16px;
+            }
+            
+            .monster {
+                font-size: 80px;
+            }
+            
+            .monster-name {
+                font-size: 24px;
+            }
+            
+            .stats {
+                gap: 20px;
+            }
+            
+            .stat-box {
+                min-width: 120px;
+                font-size: 16px;
+                padding: 10px 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="background-elements">
+            <div class="background-element bg-element-1">⚕️</div>
+            <div class="background-element bg-element-2">💊</div>
+            <div class="background-element bg-element-3">🏥</div>
+            <div class="background-element bg-element-4">🩺</div>
+        </div>
+        
+        <h1>医学单词怪兽冒险</h1>
+        
+        <div class="instructions">
+            点击匹配医学单词碎片，击败怪兽！
+        </div>
+        
+        <div class="stats">
+            <div class="stat-box">关卡: <span id="level">1</span>/1</div>
+            <div class="stat-box">得分: <span id="score">0</span></div>
+            <div class="stat-box">已匹配: <span id="matchedCount">0</span>/<span id="totalCount">12</span></div>
+        </div>
+        
+        <div class="monster-area">
+            <div class="monster">🦠</div>
+            <div class="monster-name">医学怪兽</div>
+            <div class="health-container">
+                <div class="health-bar" id="healthBar"></div>
+            </div>
+            <div class="health-text">生命值: <span id="healthText">100</span>/100</div>
+        </div>
+        
+        <div class="feedback" id="feedback"></div>
+        
+        <div class="game-area">
+            <div class="section">
+                <h3>医学单词碎片</h3>
+                <div class="fragments-section" id="fragmentsSection"></div>
+            </div>
+            
+            <div class="section">
+                <h3>已匹配</h3>
+                <div class="matched-section" id="matchedSection"></div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="btn reset-btn" id="resetBtn">重新开始</button>
+        </div>
+        
+        <div id="completedMessage" class="completed" style="display: none;">
+            <h2>🎉 恭喜通关！</h2>
+            <p>你成功击败了医学怪兽！</p>
+            <p>最终得分: <span id="finalScore">0</span></p>
+            <button class="btn reset-btn" onclick="resetGame()">重新开始</button>
+        </div>
+    </div>
+
+    <script>
+        // 医学单词数据
+        const words = [
+            { word: "break...arm", definition: "to cause someone's arm damaged and separated into two or more parts." },
+            { word: "feel unwell", definition: "ill" },
+            { word: "fever", definition: "a person has a temperature that is higher than normal" },
+            { word: "give...a ring", definition: "phone someone" },
+            { word: "lie down", definition: "to be or get into a flat position, especially in bed, in order to sleep or rest" },
+            { word: "pain", definition: "you feel this when you are hurt or ill" },
+            { word: "painful", definition: "causing you pain" },
+            { word: "patient", definition: "a person who is receiving medical treatment, especially in a hospital" },
+            { word: "take care of...", definition: "to protect someone or something and provide the things that that person or thing needs" },
+            { word: "train", definition: "to prepare someone or yourself for a job, activity or sport" },
+            { word: "trainer", definition: "a person who teaches skills to people or animals" },
+            { word: "unfit", definition: "not healthy" }
+        ];
+
+        // 游戏状态
+        let fragments = [];
+        let selectedFragment = null;
+        let totalPairs = words.length;
+        let currentMatchedCount = 0;
+        let score = 0;
+        let monsterHealth = 100;
+        let maxHealth = 100;
+
+        // DOM元素
+        const fragmentsSection = document.getElementById('fragmentsSection');
+        const matchedSection = document.getElementById('matchedSection');
+        const feedback = document.getElementById('feedback');
+        const resetBtn = document.getElementById('resetBtn');
+        const completedMessage = document.getElementById('completedMessage');
+        const matchedCount = document.getElementById('matchedCount');
+        const totalCount = document.getElementById('totalCount');
+        const healthBar = document.getElementById('healthBar');
+        const healthText = document.getElementById('healthText');
+        const scoreElement = document.getElementById('score');
+        const finalScore = document.getElementById('finalScore');
+
+        // 初始化游戏
+        function initGame() {
+            // 重置游戏状态
+            fragments = [];
+            selectedFragment = null;
+            currentMatchedCount = 0;
+            score = 0;
+            monsterHealth = 100;
+            
+            // 创建单词碎片
+            words.forEach(item => {
+                fragments.push({ type: 'word', value: item.word, pairId: item.word });
+                fragments.push({ type: 'definition', value: item.definition, pairId: item.word });
+            });
+            
+            // 随机打乱碎片
+            fragments = fragments.sort(() => Math.random() - 0.5);
+            
+            // 渲染游戏界面
+            renderGame();
+            
+            // 更新计数显示
+            totalCount.textContent = totalPairs;
+            matchedCount.textContent = currentMatchedCount;
+            scoreElement.textContent = score;
+            updateHealthBar();
+            
+            // 隐藏完成信息
+            completedMessage.style.display = 'none';
+        }
+
+        // 渲染游戏界面
+        function renderGame() {
+            // 清空现有内容
+            fragmentsSection.innerHTML = '';
+            matchedSection.innerHTML = '';
+            
+            // 创建碎片卡片
+            fragments.forEach((fragment, index) => {
+                const fragmentCard = document.createElement('div');
+                fragmentCard.className = 'fragment-card';
+                fragmentCard.textContent = fragment.value;
+                fragmentCard.dataset.index = index;
+                fragmentCard.dataset.pairId = fragment.pairId;
+                fragmentCard.dataset.type = fragment.type;
+                
+                // 添加点击事件
+                fragmentCard.addEventListener('click', () => {
+                    handleFragmentClick(fragmentCard, fragment);
+                });
+                
+                fragmentsSection.appendChild(fragmentCard);
+            });
+            
+            // 清空反馈信息
+            feedback.textContent = '';
+        }
+
+        // 处理碎片点击
+        function handleFragmentClick(fragmentCard, fragment) {
+            // 如果卡片已经被选中，则取消选择
+            if (fragmentCard.classList.contains('selected')) {
+                fragmentCard.classList.remove('selected');
+                if (selectedFragment && selectedFragment.card === fragmentCard) {
+                    selectedFragment = null;
+                }
+                return;
+            }
+            
+            // 如果没有选中任何碎片，则选中当前碎片
+            if (!selectedFragment) {
+                selectedFragment = { card: fragmentCard, fragment: fragment };
+                fragmentCard.classList.add('selected');
+                return;
+            }
+            
+            // 获取当前选中的碎片
+            const prevFragment = selectedFragment;
+            
+            // 检查是否为同一碎片
+            if (prevFragment.card === fragmentCard) {
+                return;
+            }
+            
+            // 检查匹配条件
+            if (prevFragment.fragment.pairId === fragment.pairId && 
+                prevFragment.fragment.type !== fragment.type) {
+                // 匹配成功
+                matchFragments(prevFragment.card, fragmentCard, prevFragment.fragment, fragment);
+            } else {
+                // 匹配失败
+                feedback.textContent = '匹配失败，请重试！';
+                feedback.className = 'feedback error';
+                
+                // 临时高亮显示错误的卡片
+                fragmentCard.style.backgroundColor = 'linear-gradient(135deg, #e74c3c, #c0392b)';
+                prevFragment.card.style.backgroundColor = 'linear-gradient(135deg, #e74c3c, #c0392b)';
+                
+                setTimeout(() => {
+                    fragmentCard.style.background = 'linear-gradient(135deg, #ecf0f1, #bdc3c7)';
+                    prevFragment.card.style.background = 'linear-gradient(135deg, #ecf0f1, #bdc3c7)';
+                }, 500);
+            }
+            
+            // 取消选中状态
+            prevFragment.card.classList.remove('selected');
+            selectedFragment = null;
+        }
+
+        // 匹配碎片
+        function matchFragments(card1, card2, fragment1, fragment2) {
+            // 减少怪兽生命值
+            const damage = Math.floor(100 / totalPairs); // 每个单词造成一定伤害
+            monsterHealth = Math.max(0, monsterHealth - damage);
+            
+            // 从碎片数组中移除匹配的碎片
+            const index1 = fragments.findIndex(f => f.pairId === fragment1.pairId && f.type === fragment1.type);
+            const index2 = fragments.findIndex(f => f.pairId === fragment2.pairId && f.type === fragment2.type);
+            
+            if (index1 > -1) fragments.splice(index1, 1);
+            if (index2 > -1) fragments.splice(index2, 1);
+            
+            // 从DOM中移除卡片
+            card1.style.display = 'none';
+            card2.style.display = 'none';
+            
+            // 创建匹配成功的卡片
+            const matchedCard = document.createElement('div');
+            matchedCard.className = 'matched-card';
+            matchedCard.textContent = `${fragment1.value}: ${fragment2.value}`;
+            
+            // 添加消失动画
+            setTimeout(() => {
+                matchedCard.classList.add('disappearing');
+                setTimeout(() => {
+                    matchedCard.remove();
+                }, 500);
+            }, 1000);
+            
+            matchedSection.appendChild(matchedCard);
+            
+            // 更新匹配计数
+            currentMatchedCount++;
+            matchedCount.textContent = currentMatchedCount;
+            
+            // 更新分数
+            score += 10;
+            scoreElement.textContent = score;
+            
+            // 更新怪兽生命值显示
+            updateHealthBar();
+            
+            // 显示成功反馈
+            feedback.textContent = `匹配成功！对怪兽造成 ${damage} 点伤害！`;
+            feedback.className = 'feedback success';
+            
+            // 检查是否完成所有匹配
+            if (currentMatchedCount === totalPairs) {
+                setTimeout(() => {
+                    showCompletion();
+                }, 1500);
+            }
+        }
+
+        // 更新怪兽生命值条
+        function updateHealthBar() {
+            const healthPercent = (monsterHealth / maxHealth) * 100;
+            healthBar.style.width = `${healthPercent}%`;
+            healthText.textContent = monsterHealth;
+            
+            // 根据生命值改变颜色
+            if (monsterHealth > 60) {
+                healthBar.style.background = 'linear-gradient(90deg, #2ecc71, #3498db)';
+            } else if (monsterHealth > 30) {
+                healthBar.style.background = 'linear-gradient(90deg, #f39c12, #e67e22)';
+            } else {
+                healthBar.style.background = 'linear-gradient(90deg, #e74c3c, #c0392b)';
+            }
+        }
+
+        // 显示完成信息
+        function showCompletion() {
+            finalScore.textContent = score;
+            completedMessage.style.display = 'block';
+        }
+
+        // 重新开始游戏
+        function resetGame() {
+            initGame();
+        }
+
+        // 事件监听器
+        resetBtn.addEventListener('click', resetGame);
+
+        // 启动游戏
+        initGame();
+    </script>
+</body>
+</html>

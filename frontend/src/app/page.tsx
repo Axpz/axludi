@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { games } from "@/lib/games";
 import {
   Play,
@@ -17,10 +18,10 @@ export default function Home() {
   const allGames = games; // 实际项目中这里应该是剩余的游戏
 
   return (
-    <div className="flex flex-col lg:flex-row gap-8">
+    <div className="flex flex-col lg:flex-row gap-6">
       {/* 1. Sidebar Navigation (Desktop) - 侧边栏导航 */}
-      <aside className="hidden lg:block w-64 shrink-0 space-y-8">
-        <div className="sticky top-24 space-y-8">
+      <aside className="hidden lg:block w-64 shrink-0">
+        <div className="sticky top-24">
           {/* Categories */}
           <div className="space-y-3">
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider px-3">
@@ -77,7 +78,7 @@ export default function Home() {
       </aside>
 
       {/* 2. Main Content Area */}
-      <main className="flex-1 min-w-0 space-y-10">
+      <main className="flex-1 min-w-0 space-y-16">
         {/* Mobile Search & Categories (Visible only on mobile) */}
         <div className="lg:hidden space-y-4">
           <div className="relative">
@@ -103,6 +104,8 @@ export default function Home() {
           </div>
         </div>
 
+
+
         {/* Featured Bento Grid - 核心展示区 */}
         <section className="grid grid-cols-1 md:grid-cols-3 gap-4 h-auto md:h-96">
           {/* Main Featured Game (Big Card) */}
@@ -110,23 +113,27 @@ export default function Home() {
             href={`/game/${featuredGame?.slug}`}
             className="md:col-span-2 relative group overflow-hidden rounded-3xl bg-slate-900 shadow-lg min-h-[250px] md:min-h-0"
           >
-            <div
-              className={`absolute inset-0 bg-linear-to-br ${featuredGame?.thumbnailColor} opacity-80 group-hover:opacity-100 transition-opacity duration-500`}
+            <Image
+              src={`/games/${featuredGame?.cover}`}
+              alt={featuredGame?.title || "Game cover"}
+              fill
+              className="object-cover group-hover:scale-105 transition-transform duration-500"
+              sizes="(max-width: 768px) 100vw, 66vw"
+              priority
             />
-            <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/20 to-transparent" />
 
             <div className="absolute top-4 left-4">
-              <span className="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-bold text-white uppercase border border-white/10 flex items-center gap-1">
+              <span className="px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-bold text-white uppercase border border-white/10 flex items-center gap-1 drop-shadow-lg">
                 <Flame size={12} className="text-orange-400 fill-orange-400" />{" "}
                 Featured
               </span>
             </div>
 
             <div className="absolute bottom-0 left-0 p-6 md:p-8 w-full">
-              <h2 className="text-3xl md:text-4xl font-black text-white mb-2 leading-tight group-hover:scale-[1.02] transition-transform origin-left">
+              <h2 className="text-3xl md:text-4xl font-black text-white mb-2 leading-tight group-hover:scale-[1.02] transition-transform origin-left drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">
                 {featuredGame?.title}
               </h2>
-              <div className="flex items-center gap-4 text-white/80 text-sm font-medium">
+              <div className="flex items-center gap-4 text-white text-sm font-medium drop-shadow-[0_1px_4px_rgba(0,0,0,0.8)]">
                 <span className="bg-primary px-2 py-0.5 rounded text-white text-xs font-bold uppercase">
                   {featuredGame?.category}
                 </span>
@@ -150,16 +157,19 @@ export default function Home() {
                 href={`/game/${game.slug}`}
                 className="flex-1 relative group overflow-hidden rounded-3xl bg-slate-800 shadow-md min-h-[150px]"
               >
-                <div
-                  className={`absolute inset-0 bg-linear-to-br ${game.thumbnailColor} opacity-80 group-hover:opacity-100 transition-opacity`}
+                <Image
+                  src={`/games/${game.cover}`}
+                  alt={game.title}
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform duration-300"
+                  sizes="(max-width: 768px) 100vw, 33vw"
                 />
-                <div className="absolute inset-0 bg-linear-to-t from-black/70 to-transparent" />
 
                 <div className="absolute bottom-0 left-0 p-5">
-                  <h3 className="text-lg font-bold text-white mb-1 group-hover:text-primary-foreground transition-colors">
+                  <h3 className="text-lg font-bold text-white mb-1 group-hover:text-primary-foreground transition-colors drop-shadow-[0_2px_6px_rgba(0,0,0,0.8)]">
                     {game.title}
                   </h3>
-                  <p className="text-xs text-white/70 line-clamp-1">
+                  <p className="text-xs text-white line-clamp-1 drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
                     {game.description}
                   </p>
                 </div>
@@ -193,12 +203,17 @@ export default function Home() {
                 href={`/game/${game.slug}`}
                 className="group bg-white rounded-2xl p-3 border border-slate-100 shadow-sm hover:shadow-xl hover:shadow-primary/10 transition-all hover:-translate-y-1"
               >
-                <div
-                  className={`aspect-square rounded-xl bg-linear-to-br ${game.thumbnailColor} relative overflow-hidden mb-3`}
-                >
+                <div className="aspect-square rounded-xl bg-slate-100 relative overflow-hidden mb-3">
+                  <Image
+                    src={`/games/${game.cover}`}
+                    alt={game.title}
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1280px) 25vw, 20vw"
+                  />
                   {/* Hover Play Button */}
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center">
-                    <div className="size-10 rounded-full bg-white shadow-lg flex items-center justify-center text-slate-900 opacity-0 group-hover:opacity-100 transform scale-50 group-hover:scale-100 transition-all duration-300">
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <div className="size-10 rounded-full bg-white shadow-lg flex items-center justify-center text-slate-900 opacity-0 group-hover:opacity-100 transform scale-50 group-hover:scale-100 transition-all duration-300 pointer-events-auto">
                       <Play size={18} fill="currentColor" />
                     </div>
                   </div>
@@ -235,18 +250,15 @@ export default function Home() {
             ))}
           </div>
         </section>
-
         {/* SEO Text - 放在最底部，颜色更淡 */}
-        <section className="bg-slate-50 rounded-2xl p-6 border border-slate-100 text-sm text-slate-500">
-          <h2 className="font-bold text-slate-900 mb-2">
-            Free Online Games at AxLudi
-          </h2>
-          <p className="leading-relaxed">
-            You have reached the best destination for free online games. AxLudi
-            offers the most fun experience to play alone or with friends. We
-            offer instant play to all our games without downloads, login, popups
-            or other distractions. Our games are playable on desktop, tablet and
-            mobile so you can enjoy them at school, at home or on the road.
+        <section className="rounded-2xl p-2 border-none text-sm text-slate-500">
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">
+            Simple Games. Big Memories.
+          </h1>
+          <p className="leading-relaxed text-gray-700">
+            A unique collection of indie games 
+            <strong> imagined by a child and built by the father</strong>, 
+            where to play, learn, and preserve the memories of growing up together.
           </p>
         </section>
       </main>

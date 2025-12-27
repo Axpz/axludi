@@ -1,22 +1,31 @@
-# Family Games
+# 🎮 Family Games: A Father-Son Project
 
-A collection of simple, fun games designing by my son and building by dad. 
-A place to play together and preserve precious memories of growing up.
+> "Designed by my son, built by his dad."  
+> This isn't just a collection of games; it's a digital time capsule of creativity and growing up.
 
-🎮 **Play Online**: [games.axpz.org](https://games.axpz.org)
+## ✨ Our Story
 
-## Games
+Every game in this collection started as a drawing on paper or a "What if...?" idea from my son. My goal as a dad is to bring those ideas to life through code, teaching him the logic of programming while preserving our precious memories of playing together.
 
-- 🫧 Magic Bubble Pop
-- ⚡ Reaction Time
-- ✊ Rock Paper Scissors
-- ...
+## 🕹️ Featured Games
 
-## Tech Stack
+| Game | Description | Status |
+|------|-------------|--------|
+| 🫧 Magic Bubble Pop | A satisfying sensory game to de-stress and pop bubbles. | ✅ Live |
+| ⚡ Reaction Time | Test who has the fastest fingers in the family! | ✅ Live |
+| ✊ Rock Paper Scissors | The classic decider for "who does the dishes." | ✅ Live |
+| 🦠 我爱记单词之，打败医学小怪兽 | Learn medical vocabulary while defeating cute monsters! | ✅ Live |
+| ... More to come | New ideas are being sketched every weekend. | 🚧 Coming Soon |
 
-- Next.js
-- TypeScript
-- Tailwind CSS
+## 🏗️ Building
+
+### 🛠️ Tech Stack
+
+This project is built with modern web technologies for a smooth, lag-free experience:
+
+- **Framework**: Next.js (App Router)
+- **Language**: TypeScript for type safety
+- **Styling**: Tailwind CSS for a clean, responsive UI
 
 ## Getting Started
 

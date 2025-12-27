@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { getGameBySlug, games } from "@/lib/games";
 import Link from "next/link";
+import Image from "next/image";
 import { Share2, ThumbsUp, Play } from "lucide-react";
 import { Metadata } from "next";
 import { GameContainer } from "@/components/game/game-container";
@@ -117,10 +118,17 @@ export default async function GamePage({
                 href={`/game/${related.slug}`}
                 className="shrink-0 w-32 snap-start"
               >
-                <div
-                  className={`aspect-[4/3] rounded-lg bg-gradient-to-br ${related.thumbnailColor} flex items-center justify-center shadow-md mb-2 relative overflow-hidden active:opacity-80 transition-opacity`}
-                >
-                  <Play size={18} className="text-white opacity-90" />
+                <div className="aspect-4/3 rounded-lg bg-slate-100 shadow-md mb-2 relative overflow-hidden active:opacity-80 transition-opacity group">
+                  <Image
+                    src={`/games/${related.cover}`}
+                    alt={related.title}
+                    fill
+                    className="object-cover"
+                    sizes="128px"
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-active:bg-black/10 transition-colors">
+                    <Play size={18} className="text-white opacity-90 drop-shadow-lg" />
+                  </div>
                 </div>
                 <h4 className="font-bold text-slate-900 text-xs truncate">
                   {related.title}
@@ -171,10 +179,14 @@ export default async function GamePage({
                 href={`/game/${related.slug}`}
                 className="flex gap-3 group items-center rounded-lg hover:bg-slate-50 p-2 transition-colors"
               >
-                <div
-                  className={`w-16 h-12 rounded-lg bg-linear-to-br ${related.thumbnailColor} shrink-0 flex items-center justify-center group-hover:scale-105 transition-transform shadow-sm`}
-                >
-                  <Play size={14} className="text-white opacity-90" />
+                <div className="w-16 h-12 rounded-lg bg-slate-100 shrink-0 relative overflow-hidden group-hover:scale-105 transition-transform shadow-sm">
+                  <Image
+                    src={`/games/${related.cover}`}
+                    alt={related.title}
+                    fill
+                    className="object-cover"
+                    sizes="64px"
+                  />
                 </div>
                 <div className="min-w-0">
                   <h4 className="font-bold text-slate-900 text-sm group-hover:text-primary transition-colors truncate">
@@ -196,11 +208,17 @@ export default async function GamePage({
                 href={`/game/${related.slug}`}
                 className="shrink-0 w-40 snap-start"
               >
-                <div
-                  className={`aspect-[4/3] rounded-xl bg-linear-to-br ${related.thumbnailColor} flex items-center justify-center shadow-md mb-2 relative overflow-hidden group`}
-                >
-                  <Play size={20} className="text-white opacity-90" />
-                  <div className="absolute inset-0 bg-black/0 group-active:bg-black/10 transition-colors" />
+                <div className="aspect-4/3 rounded-xl bg-slate-100 shadow-md mb-2 relative overflow-hidden group">
+                  <Image
+                    src={`/games/${related.cover}`}
+                    alt={related.title}
+                    fill
+                    className="object-cover"
+                    sizes="160px"
+                  />
+                  <div className="absolute inset-0 bg-black/0 group-active:bg-black/10 transition-colors flex items-center justify-center">
+                    <Play size={20} className="text-white opacity-90 drop-shadow-lg" />
+                  </div>
                 </div>
                 <h4 className="font-bold text-slate-900 text-sm truncate">
                   {related.title}
